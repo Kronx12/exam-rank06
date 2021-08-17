@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   copy.c                                             :+:      :+:    :+:   */
+/*   ready.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: gbaud <gbaud@student.42lyon.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/08/17 04:10:30 by gbaud             #+#    #+#             */
-/*   Updated: 2021/08/17 05:59:45 by gbaud            ###   ########lyon.fr   */
+/*   Updated: 2021/08/17 06:27:30 by gbaud            ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ int     get_client_id(int fd)
 {
     t_client *tmp = g_clients;
 
-    while (tmp->next)
+    while (tmp)
     {
         if (tmp->fd == fd)
             return (tmp->id);
@@ -66,7 +66,7 @@ int     get_max_client_fd()
     int         max = sockfd;
     t_client    *tmp = g_clients;
 
-    while (tmp && tmp->next)
+    while (tmp)
     {
         if (tmp->fd > max)
             max = tmp->fd;
@@ -79,7 +79,7 @@ void    send_all(int sender, char *msg)
 {
     t_client *tmp = g_clients;
 
-    while (tmp->next)
+    while (tmp)
     {
         if (tmp->fd != sender && FD_ISSET(tmp->fd, &wr_set))
         {
@@ -92,7 +92,7 @@ void    send_all(int sender, char *msg)
 
 int     add_client(int fd)
 {
-    t_client *tmp;
+    t_client *tmp = g_clients;
     t_client *new_client;
     
     if (!(new_client = calloc(1, sizeof(t_client))))
@@ -104,7 +104,6 @@ int     add_client(int fd)
         g_clients = new_client;
     else
     {
-        tmp = g_clients;
         while (tmp->next)
             tmp = tmp->next;
         tmp->next = new_client;
@@ -112,41 +111,37 @@ int     add_client(int fd)
     return (new_client->id);
 }
 
-int    rm_client(int fd)
-{
-    int id = -1;
-    t_client *tmp = g_clients;
-    t_client *last = g_clients;
-    
-    if (tmp->fd == fd)
-    {
-        g_clients = g_clients->next;
-        id = tmp->id;
-        free(tmp);
-        return (id);
-    }
-    while (tmp->next && tmp->fd != fd)
-    {
-        last = tmp;
-        tmp = tmp->next;
-    }
-    if (!tmp)
-        return (id);
-    last = tmp->next;
-    id = tmp->id;
-    free(tmp);
-    return (id);
-}
-
 void    accept_client()
 {
     int new_client;
     
-    if ((new_client = accept(sockfd, NULL, NULL)) <= 0)
+    if ((new_client = accept(sockfd, NULL, NULL)) < 0)
         fatal();
     sprintf(recv_buf_fail, "server: client %d just arrived\n", add_client(new_client));
     send_all(new_client, recv_buf_fail);
     FD_SET(new_client, &cur_set);
+}
+
+int    rm_client(int fd)
+{
+    t_client *tmp = g_clients;
+    t_client *del;
+    int id = get_client_id(fd);
+    
+    if (tmp && tmp->fd == fd)
+    {
+        g_clients = tmp->next;
+        free(tmp);
+    }
+    else
+    {
+        while (tmp && tmp->next && tmp->next->fd != fd)
+            tmp = tmp->next;
+        del = tmp->next;
+        tmp->next = tmp->next->next;
+        free(del);
+    }
+    return (id);
 }
 
 void    send_msgs(int fd)
@@ -156,17 +151,19 @@ void    send_msgs(int fd)
     
     while (recv_buf[i])
     {
-        send_buf_before[j++] = recv_buf[i];
-        if (send_buf_before[i] == '\n')
+        send_buf_before[j] = recv_buf[i];
+        j++;
+        if (recv_buf[i] == '\n')
         {
             sprintf(send_buf_after, "client %d: %s", get_client_id(fd), send_buf_before);
             send_all(fd, send_buf_after);
+            j = 0;
             bzero(&send_buf_before, strlen(send_buf_before));
             bzero(&send_buf_after, strlen(send_buf_after));
-            j = 0;
         }
         i++;
     }
+    bzero(&recv_buf, strlen(recv_buf));
 }
 
 int     main(int ac, char **av)
@@ -204,21 +201,16 @@ int     main(int ac, char **av)
         for (int i = 0; i <= get_max_client_fd(); i++)
             if (FD_ISSET(i, &rd_set))
             {
-        printf("here0\n");
                 if (i == sockfd)
                 {
-        printf("here1\n");
                     bzero(&recv_buf_fail, sizeof(recv_buf_fail));
                     accept_client();
-        printf("ok\n");
                     break ;
                 }
                 else
                 {
-        printf("here2\n");
                     if (recv(i, recv_buf, sizeof(recv_buf), 0) <= 0)
                     {
-        printf("here3\n");
                         bzero(&recv_buf_fail, sizeof(recv_buf_fail));
                         sprintf(recv_buf_fail, "server: client %d just left\n", rm_client(i));
                         send_all(i, recv_buf_fail);
