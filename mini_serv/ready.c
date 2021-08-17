@@ -6,7 +6,7 @@
 /*   By: gbaud <gbaud@student.42lyon.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/08/17 04:10:30 by gbaud             #+#    #+#             */
-/*   Updated: 2021/08/17 06:27:30 by gbaud            ###   ########lyon.fr   */
+/*   Updated: 2021/08/17 06:28:37 by gbaud            ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -151,15 +151,14 @@ void    send_msgs(int fd)
     
     while (recv_buf[i])
     {
-        send_buf_before[j] = recv_buf[i];
-        j++;
+        send_buf_before[j++] = recv_buf[i];
         if (recv_buf[i] == '\n')
         {
             sprintf(send_buf_after, "client %d: %s", get_client_id(fd), send_buf_before);
             send_all(fd, send_buf_after);
-            j = 0;
             bzero(&send_buf_before, strlen(send_buf_before));
             bzero(&send_buf_after, strlen(send_buf_after));
+            j = 0;
         }
         i++;
     }
