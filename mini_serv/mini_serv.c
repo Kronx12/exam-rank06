@@ -18,10 +18,32 @@ typedef struct		s_client
 
 t_client *g_clients = NULL;
 
-int sock_fd, g_id = 0;
-fd_set curr_sock, cpy_read, cpy_write;
+int g_id = 0;
+int sock_fd = 0;
+
+fd_set curr_sock;
+fd_set cpy_read;
+fd_set cpy_write;
+
 char msg[42];
-char str[42*4096], tmp[42*4096], buf[42*4096 + 42];
+char str[42 * 4096];
+char tmp[42 * 4096];
+char buf[42 * 4096 + 42];
+
+// str -> buffer de reception
+
+// tmp -> buffer de retour
+// buf -> buffer de retour
+
+// fatal() -> write(2), close server and exit(1) -> fatal_error
+// get_id(fd) -> return client id with this fd
+// get_max_fd() -> return max client fd
+// send_all(fd, str) -> send data to all clients with other fd si ils sont dans le wr_set
+// add_client_to_list(int fd) -> add client to linkedlist
+// add_client() -> intercept accept and send to all the id
+// rm_client() -> remove the client from linked_list
+// ex_msg() -> prepare le msg a l'envoi
+// main(ac, av) -> socket bind listen select (recv si <= 0 -> client just left)
 
 void	fatal() 
 {
@@ -30,7 +52,7 @@ void	fatal()
 	exit(1);
 }
 
-int get_id(int fd)
+int     get_id(int fd)
 {
     t_client *temp = g_clients;
 
@@ -95,7 +117,7 @@ int		add_client_to_list(int fd)
     return (new->id);
 }
 
-void add_client()
+void    add_client()
 {
     struct sockaddr_in clientaddr;
     socklen_t len = sizeof(clientaddr);
@@ -108,7 +130,7 @@ void add_client()
     FD_SET(client_fd, &curr_sock);
 }
 
-int rm_client(int fd)
+int     rm_client(int fd)
 {
     t_client *temp = g_clients;
     t_client *del;
@@ -130,7 +152,7 @@ int rm_client(int fd)
     return (id);
 }
 
-void ex_msg(int fd)
+void    ex_msg(int fd)
 {
     int i = 0;
     int j = 0;
@@ -152,7 +174,7 @@ void ex_msg(int fd)
     bzero(&str, strlen(str));
 }
 
-int main(int ac, char **av)
+int     main(int ac, char **av)
 {
     if (ac != 2)
     {
@@ -188,16 +210,21 @@ int main(int ac, char **av)
         {
             if (FD_ISSET(fd, &cpy_read))
             {
+        printf("here0\n");
                 if (fd == sock_fd)
                 {
+        printf("here1\n");
                     bzero(&msg, sizeof(msg));
                     add_client();
+        printf("ok\n");
                     break;
                 }
                 else
                 {
+        printf("here2\n");
                     if (recv(fd, str, sizeof(str), 0) <= 0)
                     {
+        printf("here3\n");
                         bzero(&msg, sizeof(msg));
                         sprintf(msg, "server: client %d just left\n", rm_client(fd));
                         send_all(fd, msg);
