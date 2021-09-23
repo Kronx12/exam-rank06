@@ -113,11 +113,11 @@ int nbrlen(int nb) {
 void send_msg(int sender) {
 	char *start = &buff[32];
 	char *end = buff;
-	int len = 9 + nbrlen(sender);
+	int len = 9 + nbrlen(get_client_id(sender));
 
 	while (start != end) {
 		char tmp = *start;
-		sprintf(start - len, "client %d: ", sender);
+		sprintf(start - len, "client %d: ", get_client_id(sender));
 		start[0] = tmp;
 		end = strstr(start, "\n") + 1;
 		if (end == NULL)
