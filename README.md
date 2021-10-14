@@ -1,3 +1,3 @@
 Warning ! New version of the code
 
-![100%](/note.jpg)
+![100%](/note.png)
